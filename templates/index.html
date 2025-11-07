@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnapPy Live Filters</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SnapPy Live Filters</h1>
+            <p class="subtitle">Real-time AR face filters powered by MediaPipe</p>
+        </header>
+
+        <main>
+            <!-- Video preview (hidden, used for capture) -->
+            <video id="video" autoplay playsinline style="display: none;"></video>
+            
+            <!-- Canvas for displaying processed frames -->
+            <div class="canvas-wrapper">
+                <canvas id="canvas"></canvas>
+                <div id="fps-counter" class="fps-counter">FPS: 0.0</div>
+                <div id="status" class="status">Initializing camera...</div>
+            </div>
+
+            <!-- Control panel -->
+            <div class="controls">
+                <h2>Filters</h2>
+                <div class="filter-buttons">
+                    <button id="btn-none" class="filter-btn active" data-filter="none">
+                        <span class="icon">👤</span>
+                        <span>None</span>
+                    </button>
+                    <button id="btn-sunglasses" class="filter-btn" data-filter="sunglasses">
+                        <span class="icon">🕶️</span>
+                        <span>Sunglasses</span>
+                    </button>
+                    <button id="btn-hat" class="filter-btn" data-filter="hat">
+                        <span class="icon">🎩</span>
+                        <span>Hat</span>
+                    </button>
+                    <button id="btn-crown" class="filter-btn" data-filter="crown">
+                        <span class="icon">👑</span>
+                        <span>Crown</span>
+                    </button>
+                    <button id="btn-mask" class="filter-btn" data-filter="mask">
+                        <span class="icon">😷</span>
+                        <span>Mask</span>
+                    </button>
+                    <button id="btn-makeup" class="filter-btn" data-filter="makeup">
+                        <span class="icon">💄</span>
+                        <span>Makeup</span>
+                    </button>
+                    <button id="btn-spiderman" class="filter-btn" data-filter="spiderman">
+                        <span class="icon">🕷️</span>
+                        <span>Spiderman</span>
+                    </button>
+                    <button id="btn-full-face" class="filter-btn" data-filter="full_face_mask">
+                        <span class="icon">🎭</span>
+                        <span>Full Face</span>
+                    </button>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="btn-screenshot" class="action-btn">
+                        <span class="icon">📷</span>
+                        <span>Screenshot</span>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by Flask + OpenCV + MediaPipe</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
