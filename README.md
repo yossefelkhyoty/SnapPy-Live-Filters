@@ -1,211 +1,153 @@
-# SnapPy Live Filters
+# 👻 SnapPy Live Filters  
+*Computer Vision Project Proposal*
 
-Real-time AR face filters web application using Flask, OpenCV, and MediaPipe FaceMesh.
+---
 
-## Features
+## 🎯 Project Idea
 
-- 🎥 **Live Webcam Processing**: Real-time face detection and filter overlay
-- 🕶️ **Multiple Filters**: Sunglasses, Hat, Mustache, Dog Ears, Makeup
-- ⚡ **Smooth Performance**: ~10 FPS processing with optimized frame capture
-- 📸 **Screenshot Support**: Capture and save filtered frames
-- 🎨 **Modern UI**: Beautiful, responsive interface
-- 🔄 **Instant Filter Switching**: Change filters with a single click
+### *Description*
+This project develops an *interactive real-time AR face filters web application* controlled by webcam input.  
+The app runs in the *browser (HTML/CSS/JavaScript)*, while **Python (Flask + OpenCV + MediaPipe FaceMesh)** handles *face detection and landmark tracking* through the webcam.  
+The backend processes video frames, applies selected filters (e.g., sunglasses, hat, crown, mask, makeup, Spiderman, full-face mask) based on facial landmarks, and returns the filtered frames to the browser via Flask API endpoints.  
 
-## Quick Start
+This project demonstrates how *computer vision* and *web technologies* can be combined for *fun, interactive AR experiences* similar to Snapchat filters.
 
-### 1. Install Dependencies
+*Target Users:*  
+Casual users for entertainment, AR enthusiasts, web developers learning computer vision integration, and educators teaching MediaPipe and OpenCV.
 
-```bash
-pip install -r requirements.txt
-```
+*Expected Outcome:*  
+A working web app where users can apply real-time face filters via webcam, switch filters instantly, capture screenshots, and experience smooth multi-face support (up to 5 faces).
 
-### 2. Generate Filter Images
+---
 
-If you don't have filter PNGs yet, generate sample ones:
+## 🎯 Objectives
+1. Implement real-time face detection and landmark tracking using Python (OpenCV + MediaPipe FaceMesh).  
+2. Transmit processed frames to the browser using Flask API.  
+3. Develop a responsive UI for filter selection and live display using JavaScript, HTML, and CSS.  
+4. Ensure smooth performance (~10 FPS) with minimal latency.  
+5. Demonstrate full integration between computer vision and web technologies.
 
-```bash
-python generate_filters.py
-```
+---
 
-This will create placeholder PNG images in `static/filters/`.
+## 📘 Scope
 
-### 3. Run the Application
+### *In Scope*
+- Real-time face detection and multi-face support (up to 5 faces).  
+- Browser-based UI for filter selection, live preview, and screenshot capture.  
+- Filter application logic (scaling, rotation, and positioning).  
+- Local testing, demo video, and placeholder filter image generation.  
 
-```bash
-python app.py
-```
+### *Out of Scope*
+- 3D filters or AI-generated effects.  
+- Cloud deployment or mobile optimization.  
+- User authentication or social media sharing.
 
-### 4. Open in Browser
+---
 
-Navigate to: **http://localhost:5000**
+## 👥 Team Members and Roles
 
-Allow camera permissions when prompted.
+| Team Member | GitHub Account | Responsibilities |
+|--------------|----------------|------------------|
+| **Youssef Mohammed Elkhyoty** | [https://github.com/yossefelkhyoty](https://github.com/yossefelkhyoty) | Implement face tracking, filter application logic, and backend API endpoints. |
+| **Mrwan Mostafa Ragab** | [https://github.com/mrwan-ragab](https://github.com/mrwan-ragab) | Develop frontend UI, handle webcam capture, and integrate JavaScript with Flask. |
+| **Mossad Ahmed Mossad** | [https://github.com/Sadoun90](https://github.com/Sadoun90) | Test system performance, debug issues, create sample filters, and write documentation. |
 
-## Project Structure
+---
 
-```
-SnapPy-Live-Filters/
-├── app.py                      # Flask backend server
-├── generate_filters.py          # Script to create sample filter PNGs
-├── requirements.txt            # Python dependencies
-├── README.md                   # This file
-├── templates/
-│   └── index.html             # Main HTML page
-└── static/
-    ├── css/
-    │   └── style.css          # Styling
-    ├── js/
-    │   └── app.js             # Frontend JavaScript
-    ├── filters/               # Filter PNG images
-    │   ├── sunglasses.png
-    │   ├── hat.png
-    │   ├── mustache.png
-    │   ├── dog_ears.png
-    │   └── makeup.png
-    └── screenshots/            # Saved screenshots (auto-created)
-```
+## 🧰 Tools and Usage
 
-## How It Works
+| Tool/Library | Purpose | Usage Details |
+|---------------|----------|----------------|
+| **Python** | Backend processing | Handles webcam frames, face detection, and filter overlay. |
+| **OpenCV** | Image processing | Captures, decodes, resizes, rotates, and blends filters. |
+| **MediaPipe FaceMesh** | Face tracking | Detects up to 5 faces with 468 landmarks for accurate filter placement. |
+| **Flask** | Web server & API | Serves frontend, processes frames via `/process_frame`, and saves screenshots. |
+| **JavaScript (HTML/CSS)** | Frontend | Captures webcam frames every 100ms, sends to Flask, and displays results. |
+| **NumPy** | Array operations | Supports image transformations and blending operations. |
 
-1. **Frontend (JavaScript)**:
-   - Uses `getUserMedia` to access webcam
-   - Captures frames every 100ms
-   - Sends frame as base64 to Flask backend
-   - Displays processed frame on canvas
+*Hardware/Environment:*  
+- Laptop or PC with webcam.  
+- Python 3.x with dependencies from `requirements.txt`.  
+- Modern browser (Chrome/Firefox recommended).
 
-2. **Backend (Flask)**:
-   - Receives base64 image data
-   - Decodes to OpenCV format
-   - Detects face landmarks using MediaPipe FaceMesh (468 landmarks)
-   - Applies selected filter based on landmark positions
-   - Returns processed frame as base64 JPEG
+---
 
-3. **Filters**:
-   - Each filter uses specific landmark indices for placement
-   - Automatically scales, rotates, and positions based on face geometry
-   - Supports transparent PNG overlays with alpha blending
+## 📅 4-Week Plan
 
-## Available Filters
+### *Week 1: Planning and Setup*
+**Milestones:**  
+- Finalize architecture (Flask backend + JS frontend).  
+- Set up environment and generate sample filters (`generate_filters.py`).  
+- Test webcam access and frame capture.  
+**Deliverables:**  
+- Working Flask server with index page and sample filters.  
+**Assigned:**  Mrwan Mostafa Ragab.  
 
-- **Sunglasses**: Uses eye landmarks (33, 263)
-- **Hat**: Uses ear landmarks (234, 454) and forehead (10)
-- **Mustache**: Uses mouth landmarks (61, 291) and nose tip (1)
-- **Dog Ears**: Uses ear landmarks (234, 454) and head top (10)
-- **Makeup**: Lip tint using mouth landmarks
+---
 
-## API Endpoints
+### *Week 2: Development Phase 1*
+**Milestones:**  
+- Implement MediaPipe FaceMesh (multi-face detection).  
+- Add filter overlay functions (scaling, rotation, blending).  
+- Set up Flask API endpoints (`/process_frame`, `/screenshot`).  
+**Deliverables:**  
+- Backend applies filters (sunglasses, hat, crown, mask, Spiderman).  
+**Assigned:** Youssef Mohammed Elkhyoty.  
 
-### `POST /process_frame`
-Processes a single frame and applies filter.
+---
 
-**Request:**
-```json
-{
-  "image": "data:image/jpeg;base64,...",
-  "filter": "sunglasses"
-}
-```
+### *Week 3: Development Phase 2 and Testing*
+**Milestones:**  
+- Build frontend (`index.html`, `app.js`) with webcam capture and UI.  
+- Integrate Flask backend with JavaScript via fetch requests.  
+- Test multi-face detection, filter accuracy, and performance (~10 FPS).  
+**Deliverables:**  
+- Fully functional live AR filter app with screenshot feature.  
+**Assigned:** Mossad Ahmed Mossad.  
 
-**Response:**
-```json
-{
-  "image": "base64_encoded_jpeg",
-  "landmarks_detected": true
-}
-```
+---
 
-### `POST /screenshot`
-Saves current frame as PNG.
+### *Week 4: Finalization and Presentation*
+**Milestones:**  
+- Optimize UI (FPS counter, filter selection) and backend (caching, error handling).  
+- finalize README/documentation.  
+**Deliverables:**  
+- Polished final project and presentation.  
+**Assigned:** All members.  
 
-**Request:**
-```json
-{
-  "image": "data:image/png;base64,..."
-}
-```
+---
 
-**Response:**
-```json
-{
-  "success": true,
-  "filename": "screenshot_1234567890.png"
-}
-```
+## 🕓 Overall Timeline Notes
+Frontend-backend integration begins in **Week 2**.  
+Testing and optimization continue until **Week 4** to ensure smooth and accurate filter tracking.
 
-## Customization
+---
 
-### Adding Your Own Filters
+## ✅ Checklist for Detailed Tasks
+- [ ] Setup environment and install dependencies.  
+- [ ] Generate sample filters (`generate_filters.py`).  
+- [ ] Implement multi-face tracking with MediaPipe.  
+- [ ] Add filter overlay functions (scaling, rotation, transparency).  
+- [ ] Establish Flask ↔ JS communication.  
+- [ ] Build responsive frontend (`index.html`, `app.js`).  
+- [ ] Integrate, test, and optimize performance.  
+- [ ] Document everything in `README.md`.  
 
-1. Place your PNG file (with transparency) in `static/filters/`
-2. Add filter entry in `app.py`:
-   ```python
-   available_filters = {
-       "your_filter": "your_filter.png",
-       ...
-   }
-   ```
-3. Add filter placement logic in `apply_filter()` function
-4. Add button in `templates/index.html`
+---
 
-### Adjusting Frame Rate
+## 📊 Evaluation Criteria
 
-Edit `FRAME_INTERVAL_MS` in `static/js/app.js`:
-```javascript
-this.FRAME_INTERVAL_MS = 100; // milliseconds between frames
-```
+**Success Metrics:**  
+- Real-time performance (~10 FPS) with <200ms latency.  
+- Filter alignment accuracy >90%.  
+- Multi-face support and responsive UI.  
 
-Lower values = higher frame rate (more server load)
+**Feedback:**  
+- Gathered from instructor and peers during demo.  
 
-### Changing Camera Resolution
+**Next Steps:**  
+- Add more filter types or custom PNG upload.  
+- Explore TensorFlow.js for browser-only CV processing.  
+- Deploy to Heroku or local network for live access.  
 
-Edit video constraints in `static/js/app.js`:
-```javascript
-video: {
-    width: { ideal: 1280 },
-    height: { ideal: 720 }
-}
-```
-
-## Troubleshooting
-
-### Camera Not Working
-- Ensure you've granted camera permissions in your browser
-- Try a different browser (Chrome/Firefox recommended)
-- Check if another app is using the camera
-
-### Slow Performance
-- Reduce frame interval (increase `FRAME_INTERVAL_MS`)
-- Lower camera resolution
-- Close other applications using the camera
-
-### Filters Not Appearing
-- Check browser console for errors
-- Ensure filter PNG files exist in `static/filters/`
-- Verify face is well-lit and fully visible
-
-## Browser Compatibility
-
-- ✅ Chrome/Edge (Chromium) - Recommended
-- ✅ Firefox
-- ⚠️ Safari - May require HTTPS
-- ❌ Internet Explorer - Not supported
-
-## Dependencies
-
-- **Flask**: Web framework
-- **OpenCV**: Image processing
-- **MediaPipe**: Face detection and landmark tracking
-- **NumPy**: Array operations
-
-## License
-
-MIT License
-
-## Credits
-
-Built with:
-- MediaPipe FaceMesh for face landmark detection
-- OpenCV for image processing
-- Flask for backend API
-
-
+---
