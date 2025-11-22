@@ -10,7 +10,8 @@ filters = {
     "hat": (255, 0, 0),
     "mask": (0, 255, 0),
     "crown": (255, 255, 0),
-    "spiderman": (255, 0, 255)
+    "spiderman": (255, 0, 255),
+    "full_face_mask": (128, 128, 128)
 }
 
 for name, color in filters.items():

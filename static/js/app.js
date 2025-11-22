@@ -25,9 +25,10 @@ class SnapPyApp {
         this.currentFps = 0;
         
         // Frame processing interval (100ms = ~10 FPS to backend)
+        // This balances performance with real-time responsiveness
         this.processInterval = null;
         this.videoDisplayInterval = null;
-        this.FRAME_INTERVAL_MS = 100;
+        this.FRAME_INTERVAL_MS = 100; // 100ms = 10 FPS target
         
         this.init();
     }
@@ -84,12 +85,19 @@ class SnapPyApp {
             
             // Set canvas size to match video
             this.video.addEventListener('loadedmetadata', () => {
-                this.canvas.width = this.video.videoWidth;
-                this.canvas.height = this.video.videoHeight;
-                this.updateStatus('Camera ready!');
+                const videoWidth = this.video.videoWidth;
+                const videoHeight = this.video.videoHeight;
                 
-                // Immediately draw video to canvas for visual feedback
-                this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+                if (videoWidth > 0 && videoHeight > 0) {
+                    this.canvas.width = videoWidth;
+                    this.canvas.height = videoHeight;
+                    this.updateStatus('Camera ready!');
+                    
+                    // Immediately draw video to canvas for visual feedback
+                    this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+                } else {
+                    this.updateStatus('Invalid video dimensions');
+                }
             });
             
         } catch (error) {
@@ -139,21 +147,37 @@ class SnapPyApp {
     async processFrame() {
         if (this.isProcessing || !this.stream) return;
         
+        // Validate video is ready
+        if (this.video.readyState !== this.video.HAVE_ENOUGH_DATA) {
+            return;
+        }
+        
+        const videoWidth = this.video.videoWidth;
+        const videoHeight = this.video.videoHeight;
+        
+        if (videoWidth === 0 || videoHeight === 0) {
+            return;
+        }
+        
         this.isProcessing = true;
         
         try {
             // Capture current video frame directly (don't draw to canvas yet)
             // Create a temporary canvas to capture frame
             const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = this.video.videoWidth;
-            tempCanvas.height = this.video.videoHeight;
+            tempCanvas.width = videoWidth;
+            tempCanvas.height = videoHeight;
             const tempCtx = tempCanvas.getContext('2d');
             tempCtx.drawImage(this.video, 0, 0, tempCanvas.width, tempCanvas.height);
             
-            // Convert to base64
-            const imageData = tempCanvas.toDataURL('image/jpeg', 0.8);
+            // Convert to base64 with optimized quality for better performance
+            // Lower quality (0.7) reduces payload size and improves FPS
+            const imageData = tempCanvas.toDataURL('image/jpeg', 0.7);
             
-            // Send to backend
+            // Send to backend with timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+            
             const response = await fetch('/process_frame', {
                 method: 'POST',
                 headers: {
@@ -162,8 +186,11 @@ class SnapPyApp {
                 body: JSON.stringify({
                     image: imageData,
                     filter: this.currentFilter
-                })
+                }),
+                signal: controller.signal
             });
+            
+            clearTimeout(timeoutId);
             
             if (!response.ok) {
                 throw new Error(`Server error: ${response.status}`);
@@ -203,12 +230,13 @@ class SnapPyApp {
                     if (data.landmarks_detected) {
                         const numFaces = data.num_faces || 1;
                         if (numFaces > 1) {
-                            this.updateStatus(`${numFaces} faces detected`);
+                            this.updateStatus(`${numFaces} faces detected ✨`);
                         } else {
-                            this.updateStatus('Face detected');
+                            const filterText = this.currentFilter ? ` - ${this.currentFilter}` : '';
+                            this.updateStatus(`Face detected${filterText}`);
                         }
                     } else {
-                        this.updateStatus('No face detected');
+                        this.updateStatus('No face detected - position yourself in frame');
                     }
                     
                     this.isProcessing = false;
@@ -229,7 +257,15 @@ class SnapPyApp {
         } catch (error) {
             console.error('Error processing frame:', error);
             this.isProcessing = false;
-            this.updateStatus('Processing error');
+            
+            if (error.name === 'AbortError') {
+                this.updateStatus('Request timeout - check connection');
+            } else {
+                this.updateStatus('Processing error - retrying...');
+            }
+            
+            // Re-enable video display on error
+            this.videoDisplayActive = true;
         }
     }
     
@@ -276,10 +312,20 @@ class SnapPyApp {
      */
     async captureScreenshot() {
         try {
+            // Check if canvas has valid dimensions
+            if (this.canvas.width === 0 || this.canvas.height === 0) {
+                this.updateStatus('Cannot capture - video not ready');
+                return;
+            }
+            
             this.updateStatus('Capturing screenshot...');
             
             // Get current canvas as PNG (highest quality)
             const imageData = this.canvas.toDataURL('image/png', 1.0);
+            
+            // Add timeout for screenshot request
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
             
             const response = await fetch('/screenshot', {
                 method: 'POST',
@@ -288,13 +334,20 @@ class SnapPyApp {
                 },
                 body: JSON.stringify({
                     image: imageData
-                })
+                }),
+                signal: controller.signal
             });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
             
             const data = await response.json();
             
             if (data.success) {
-                this.updateStatus('Screenshot saved!');
+                this.updateStatus('Screenshot saved! 📷');
                 
                 // Also trigger download in browser
                 const link = document.createElement('a');
@@ -304,6 +357,7 @@ class SnapPyApp {
                 
                 setTimeout(() => {
                     if (this.currentFilter && this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
+                        const numFaces = 1; // Could be enhanced to show actual count
                         this.updateStatus('Face detected');
                     } else {
                         this.updateStatus('Ready');
@@ -315,7 +369,11 @@ class SnapPyApp {
             
         } catch (error) {
             console.error('Error capturing screenshot:', error);
-            this.updateStatus('Screenshot error');
+            if (error.name === 'AbortError') {
+                this.updateStatus('Screenshot timeout - try again');
+            } else {
+                this.updateStatus('Screenshot error - check console');
+            }
         }
     }
     

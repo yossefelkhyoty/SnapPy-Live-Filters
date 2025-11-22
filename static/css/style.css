@@ -221,3 +221,27 @@ footer {
 .status.loading {
     animation: pulse 1.5s ease-in-out infinite;
 }
+
+/* Status message colors for different states */
+.status.success {
+    background: rgba(76, 175, 80, 0.9);
+}
+
+.status.error {
+    background: rgba(244, 67, 54, 0.9);
+}
+
+.status.warning {
+    background: rgba(255, 152, 0, 0.9);
+}
+
+/* Smooth transitions for status updates */
+.status {
+    transition: background-color 0.3s ease;
+}
+
+/* Improve canvas rendering performance */
+#canvas {
+    will-change: contents;
+    transform: translateZ(0); /* Hardware acceleration */
+}
