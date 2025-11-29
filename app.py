@@ -1,3 +1,20 @@
+"""
+SnapPy Live Filters - Backend Server
+=====================================
+
+A Flask-based web application that processes webcam frames in real-time,
+applies face filters using MediaPipe FaceMesh and OpenCV, and returns
+processed frames to the frontend.
+
+Features:
+- Real-time face detection (up to 5 faces)
+- Multiple filter types (sunglasses, hat, crown, mask, etc.)
+- Filter image caching for performance
+- RESTful API endpoints for frame processing and screenshots
+
+Author: Team SnapPy
+"""
+
 # app.py
 from flask import Flask, render_template, request, jsonify
 import os
@@ -32,6 +49,9 @@ available_filters = {
 
 # Filter directory
 FILTERS_DIR = os.path.join('static', 'filters')
+
+# Filter image cache to avoid reloading from disk on every request
+filter_cache = {}
 
 # MediaPipe Face Mesh landmark indices (468 landmarks)
 # Key landmarks for filter placement
@@ -96,6 +116,34 @@ def get_landmark_point(landmarks, idx):
         return None
     landmark = landmarks.landmark[idx]
     return (landmark.x, landmark.y)
+
+def load_filter_image(filter_name):
+    """
+    Load filter image with caching to improve performance.
+    
+    Args:
+        filter_name: Name of the filter (key in available_filters)
+    
+    Returns:
+        Filter image (BGRA) or None if not found
+    """
+    if filter_name not in available_filters:
+        return None
+    
+    # Check cache first
+    if filter_name in filter_cache:
+        return filter_cache[filter_name]
+    
+    # Load from disk
+    filter_path = os.path.join(FILTERS_DIR, available_filters[filter_name])
+    if os.path.exists(filter_path):
+        filter_img = cv2.imread(filter_path, cv2.IMREAD_UNCHANGED)
+        if filter_img is not None:
+            # Cache the image
+            filter_cache[filter_name] = filter_img
+            return filter_img
+    
+    return None
 
 def overlay_filter(frame, filter_img, x, y, width, height, angle=0, alpha=1.0):
     """
@@ -194,16 +242,14 @@ def apply_sunglasses(frame, landmarks, frame_width, frame_height):
     # Calculate angle (tilt of face)
     angle = calculate_angle(left_eye_left, right_eye_right)
     
-    # Load and apply filter
-    filter_path = os.path.join(FILTERS_DIR, available_filters["sunglasses"])
-    if os.path.exists(filter_path):
-        filter_img = cv2.imread(filter_path, cv2.IMREAD_UNCHANGED)
-        if filter_img is not None:
-            # Scale filter to fit eye width with some padding
-            filter_height = int(eye_width * 0.6)
-            filter_width = int(eye_width * 2.2)
-            frame = overlay_filter(frame, filter_img, center_x, center_y, 
-                                  filter_width, filter_height, angle, alpha=0.9)
+    # Load and apply filter (using cache)
+    filter_img = load_filter_image("sunglasses")
+    if filter_img is not None:
+        # Scale filter to fit eye width with some padding
+        filter_height = int(eye_width * 0.6)
+        filter_width = int(eye_width * 2.2)
+        frame = overlay_filter(frame, filter_img, center_x, center_y, 
+                              filter_width, filter_height, angle, alpha=0.9)
     
     return frame
 
@@ -231,15 +277,13 @@ def apply_hat(frame, landmarks, frame_width, frame_height):
     # Calculate angle
     angle = calculate_angle(left_ear, right_ear)
     
-    # Load and apply filter
-    filter_path = os.path.join(FILTERS_DIR, available_filters["hat"])
-    if os.path.exists(filter_path):
-        filter_img = cv2.imread(filter_path, cv2.IMREAD_UNCHANGED)
-        if filter_img is not None:
-            filter_width = int(head_width * 1.8)
-            filter_height = int(head_width * 1.2)
-            frame = overlay_filter(frame, filter_img, center_x, center_y, 
-                                  filter_width, filter_height, angle, alpha=0.9)
+    # Load and apply filter (using cache)
+    filter_img = load_filter_image("hat")
+    if filter_img is not None:
+        filter_width = int(head_width * 1.8)
+        filter_height = int(head_width * 1.2)
+        frame = overlay_filter(frame, filter_img, center_x, center_y, 
+                              filter_width, filter_height, angle, alpha=0.9)
     
     return frame
 
@@ -267,93 +311,105 @@ def apply_crown(frame, landmarks, frame_width, frame_height):
     # Calculate angle
     angle = calculate_angle(left_ear, right_ear)
     
-    # Load and apply filter
-    filter_path = os.path.join(FILTERS_DIR, available_filters["crown"])
-    if os.path.exists(filter_path):
-        filter_img = cv2.imread(filter_path, cv2.IMREAD_UNCHANGED)
-        if filter_img is not None:
-            filter_width = int(head_width * 1.5)
-            filter_height = int(head_width * 1.0)
-            frame = overlay_filter(frame, filter_img, center_x, center_y, 
-                                  filter_width, filter_height, angle, alpha=0.9)
+    # Load and apply filter (using cache)
+    filter_img = load_filter_image("crown")
+    if filter_img is not None:
+        filter_width = int(head_width * 1.5)
+        filter_height = int(head_width * 1.0)
+        frame = overlay_filter(frame, filter_img, center_x, center_y, 
+                              filter_width, filter_height, angle, alpha=0.9)
     
     return frame
 
 def apply_mask(frame, landmarks, frame_width, frame_height):
-    """Apply mask filter based on nose and mouth landmarks."""
-    nose_tip = get_landmark_point(landmarks, LANDMARKS["nose_tip"])
-    mouth_left = get_landmark_point(landmarks, LANDMARKS["mouth_left"])
-    mouth_right = get_landmark_point(landmarks, LANDMARKS["mouth_right"])
-    
-    if not all([nose_tip, mouth_left, mouth_right]):
+    """Apply mask filter using MediaPipe landmarks."""
+    indices = {
+        "nose_tip": 1,
+        "chin": 152,
+        "right_cheek": 234,
+        "left_cheek": 454,
+    }
+
+    if any(idx >= len(landmarks.landmark) for idx in indices.values()):
         return frame
-    
-    # Convert to pixel coordinates
-    nose_tip = (int(nose_tip[0] * frame_width), int(nose_tip[1] * frame_height))
-    mouth_left = (int(mouth_left[0] * frame_width), int(mouth_left[1] * frame_height))
-    mouth_right = (int(mouth_right[0] * frame_width), int(mouth_right[1] * frame_height))
-    
-    # Calculate width (mouth width)
-    mask_width = calculate_distance(mouth_left, mouth_right)
-    
-    # Position at nose tip
-    center_x = nose_tip[0]
-    center_y = int((nose_tip[1] + (mouth_left[1] + mouth_right[1]) // 2) // 2)
-    
-    # Calculate angle
-    angle = calculate_angle(mouth_left, mouth_right)
-    
-    # Load and apply filter
-    filter_path = os.path.join(FILTERS_DIR, available_filters["mask"])
-    if os.path.exists(filter_path):
-        filter_img = cv2.imread(filter_path, cv2.IMREAD_UNCHANGED)
-        if filter_img is not None:
-            filter_width = int(mask_width * 2.5)
-            filter_height = int(mask_width * 1.5)
-            frame = overlay_filter(frame, filter_img, center_x, center_y, 
-                                  filter_width, filter_height, angle, alpha=0.85)
-    
-    return frame
+
+    def lm_to_px(idx):
+        lm = landmarks.landmark[idx]
+        return np.array([int(lm.x * frame_width), int(lm.y * frame_height)])
+
+    nose_tip = lm_to_px(indices["nose_tip"])
+    chin = lm_to_px(indices["chin"])
+    right_cheek = lm_to_px(indices["right_cheek"])
+    left_cheek = lm_to_px(indices["left_cheek"])
+
+    face_width = np.linalg.norm(left_cheek - right_cheek)
+    face_height = np.linalg.norm(nose_tip - chin)
+
+    center_x = int((nose_tip[0] + chin[0]) / 2)
+    # Slight upward shift so mask starts closer to nose
+    center_y = int(nose_tip[1] +  face_height * .30)
+    filter_img = load_filter_image("mask")
+    if filter_img is None:
+        return frame
+
+    mask_width = int(face_width * 1.60)
+    mask_height = int(face_height * 2)
+
+    return overlay_filter(
+        frame,
+        filter_img,
+        center_x,
+        center_y,
+        mask_width,
+        mask_height,
+        angle=0,
+        alpha=0.95,
+    )
 
 def apply_spiderman(frame, landmarks, frame_width, frame_height):
-    """Apply Spiderman mask filter covering most of the face."""
-    # Get face boundary points
-    chin = get_landmark_point(landmarks, LANDMARKS["chin"])
-    forehead = get_landmark_point(landmarks, LANDMARKS["forehead"])
-    left_ear = get_landmark_point(landmarks, LANDMARKS["left_ear"])
-    right_ear = get_landmark_point(landmarks, LANDMARKS["right_ear"])
-    
-    if not all([chin, forehead, left_ear, right_ear]):
+    """Apply Spiderman mask filter covering the entire face."""
+    indices = {
+        "chin": 152,
+        "forehead": 10,
+        "left_side": 234,
+        "right_side": 454,
+    }
+
+    if any(idx >= len(landmarks.landmark) for idx in indices.values()):
         return frame
-    
-    # Convert to pixel coordinates
-    chin = (int(chin[0] * frame_width), int(chin[1] * frame_height))
-    forehead = (int(forehead[0] * frame_width), int(forehead[1] * frame_height))
-    left_ear = (int(left_ear[0] * frame_width), int(left_ear[1] * frame_height))
-    right_ear = (int(right_ear[0] * frame_width), int(right_ear[1] * frame_height))
-    
-    # Calculate dimensions
-    head_width = calculate_distance(left_ear, right_ear)
-    head_height = calculate_distance(forehead, chin)
-    
-    # Center position
-    center_x = (left_ear[0] + right_ear[0]) // 2
-    center_y = int((forehead[1] + chin[1]) // 2)
-    
-    # Calculate angle
-    angle = calculate_angle(left_ear, right_ear)
-    
-    # Load and apply filter
-    filter_path = os.path.join(FILTERS_DIR, available_filters["spiderman"])
-    if os.path.exists(filter_path):
-        filter_img = cv2.imread(filter_path, cv2.IMREAD_UNCHANGED)
-        if filter_img is not None:
-            filter_width = int(head_width * 2.0)
-            filter_height = int(head_height * 1.5)
-            frame = overlay_filter(frame, filter_img, center_x, center_y, 
-                                  filter_width, filter_height, angle, alpha=0.9)
-    
-    return frame
+
+    def lm_to_px(idx):
+        lm = landmarks.landmark[idx]
+        return np.array([int(lm.x * frame_width), int(lm.y * frame_height)])
+
+    chin = lm_to_px(indices["chin"])
+    forehead = lm_to_px(indices["forehead"])
+    left_side = lm_to_px(indices["left_side"])
+    right_side = lm_to_px(indices["right_side"])
+
+    face_width = np.linalg.norm(right_side - left_side)
+    face_height = np.linalg.norm(forehead - chin)
+
+    center_x = int((left_side[0] + right_side[0]) / 2)
+    center_y = int((forehead[1] + chin[1]) / 2) - int(face_height * 0.05)
+
+    filter_img = load_filter_image("spiderman")
+    if filter_img is None:
+        return frame
+
+    filter_width = int(face_width * 1.4)
+    filter_height = int(face_height * 1.55)
+
+    return overlay_filter(
+        frame,
+        filter_img,
+        center_x,
+        center_y,
+        filter_width,
+        filter_height,
+        angle=0,
+        alpha=0.95,
+    )
 
 def apply_full_face_mask(frame, landmarks, frame_width, frame_height):
     """Apply full face mask filter covering entire face."""
@@ -383,15 +439,13 @@ def apply_full_face_mask(frame, landmarks, frame_width, frame_height):
     # Calculate angle
     angle = calculate_angle(left_ear, right_ear)
     
-    # Load and apply filter
-    filter_path = os.path.join(FILTERS_DIR, available_filters["full_face_mask"])
-    if os.path.exists(filter_path):
-        filter_img = cv2.imread(filter_path, cv2.IMREAD_UNCHANGED)
-        if filter_img is not None:
-            filter_width = int(head_width * 2.2)
-            filter_height = int(head_height * 1.8)
-            frame = overlay_filter(frame, filter_img, center_x, center_y, 
-                                  filter_width, filter_height, angle, alpha=0.9)
+    # Load and apply filter (using cache)
+    filter_img = load_filter_image("full_face_mask")
+    if filter_img is not None:
+        filter_width = int(head_width * 2.2)
+        filter_height = int(head_height * 1.8)
+        frame = overlay_filter(frame, filter_img, center_x, center_y, 
+                              filter_width, filter_height, angle, alpha=0.9)
     
     return frame
 
@@ -478,8 +532,15 @@ def process_frame():
         })
 
     except Exception as e:
-        print(f"Error processing frame: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        error_msg = str(e)
+        print(f"Error processing frame: {error_msg}")
+        print(traceback.format_exc())
+        # Return user-friendly error message (don't expose internal details)
+        return jsonify({
+            'error': 'Failed to process frame. Please try again.',
+            'details': error_msg if app.debug else None
+        }), 500
 
 @app.route('/screenshot', methods=['POST'])
 def screenshot():
@@ -508,8 +569,14 @@ def screenshot():
         return jsonify({'success': True, 'filename': filename})
 
     except Exception as e:
-        print(f"Error saving screenshot: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        error_msg = str(e)
+        print(f"Error saving screenshot: {error_msg}")
+        print(traceback.format_exc())
+        return jsonify({
+            'error': 'Failed to save screenshot. Please try again.',
+            'details': error_msg if app.debug else None
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

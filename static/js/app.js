@@ -270,15 +270,23 @@ class SnapPyApp {
     }
     
     /**
-     * Set the active filter
+     * Set the active filter with visual feedback
      */
     setFilter(filterName) {
         this.currentFilter = filterName;
         console.log('Filter changed to:', filterName || 'none');
+        
+        // Update status to show filter change
+        if (filterName) {
+            const filterDisplayName = filterName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+            this.updateStatus(`Filter: ${filterDisplayName}`);
+        } else {
+            this.updateStatus('No filter selected');
+        }
     }
     
     /**
-     * Update FPS counter
+     * Update FPS counter with color coding and smooth updates
      */
     updateFPS() {
         this.frameCount++;
@@ -289,7 +297,22 @@ class SnapPyApp {
             this.currentFps = (this.frameCount * 1000) / elapsed;
             this.frameCount = 0;
             this.lastFpsTime = now;
-            this.fpsCounter.textContent = `FPS: ${this.currentFps.toFixed(1)}`;
+            
+            // Update FPS display with color coding
+            const fpsText = this.currentFps.toFixed(1);
+            this.fpsCounter.textContent = `FPS: ${fpsText}`;
+            
+            // Color code based on performance
+            if (this.currentFps >= 9) {
+                this.fpsCounter.style.color = '#0f0'; // Green - good
+                this.fpsCounter.style.borderColor = '#0f0';
+            } else if (this.currentFps >= 6) {
+                this.fpsCounter.style.color = '#ffa500'; // Orange - acceptable
+                this.fpsCounter.style.borderColor = '#ffa500';
+            } else {
+                this.fpsCounter.style.color = '#f00'; // Red - poor
+                this.fpsCounter.style.borderColor = '#f00';
+            }
         }
     }
     
